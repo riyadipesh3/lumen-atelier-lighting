@@ -1,0 +1,492 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/archivo';
+@import '@fontsource/dm-mono';
+
+@source "./**/*.{tsx,ts}";
+
+/* ===========================================================================
+   MATERIAL: ACRYLIC UI (Lumen Atelier, architectural lighting studio)
+
+   Acrylic is COLOURED translucent, heavy blurred material. Four pieces of CSS
+   do all of the work. Delete any one of them and the acrylic visibly breaks.
+
+   1. TINTED, HUE GRADED FILL        -> `.acrylic`, `.acrylic-tinted`,
+                                       `.acrylic-deep`, `.acrylic-thin`
+      The panels are NOT white alpha. Each carries its own cool graphite-blue
+      to slate fill at 0.30 to 0.46 alpha, graded across 152 degrees, so the
+      panel has a hue of its own before any backdrop is sampled. White alpha
+      would read as glassmorphism; this reads as cast acrylic.
+
+   2. HEAVY BLUR, LOW SATURATION SHARPEN
+                                    -> `backdrop-filter` on `.acrylic*`
+      blur(38px) saturate(165%), and blur(52px) on `.acrylic-deep`. Acrylic is
+      cast thick and scatters hard, so the blur is deliberately stronger than
+      any glass treatment and never drops below 26px.
+
+   3. EDGE REFRACTION                -> `.acrylic::after`
+      A 1.5px gradient ring built with the two-mask xor trick. Bright warm
+      white at the leading corner (152 degrees, where light enters the cast
+      edge), gone by mid span, then a cool blue re-emission on the trailing
+      edge and a tungsten bounce in the last corner. That hue split across the
+      edge is the refraction read. This is the single most load bearing rule
+      in the file.
+
+   4. MATTE, SOFT HIGHLIGHT          -> `.acrylic::before`
+      One very broad 14% wash plus a fine fractal grain. No tight specular,
+      no small bright hotspot, no mirror band anywhere. A `rgba(255,255,255,.6)`
+      inset hairline would kill the matte read instantly, so the inset is 14%.
+
+   RADIUS SYSTEM, locked: ONE radius, 16px (`--radius-acrylic`), applied to
+   every element including children. The only exceptions are elements that are
+   geometrically circular: `.btn-icon` and `.beacon` are 999px because they are
+   discs, not rounded rectangles. Nothing else deviates.
+
+   PALETTE: cool graphite field, ONE accent, warm tungsten #e8a97c (a 2700K
+   lamp rendered as a UI colour, not brass). Neutrals are cool throughout:
+   ink, graphite, slate, mist, mist-dim. Shadows are tinted to the ink hue,
+   never neutral black.
+   =========================================================================== */
+
+@theme {
+  --color-ink: #0b0e11;
+  --color-graphite: #12171b;
+  --color-slate: #1b2229;
+  --color-mist: #e7eaec;
+  --color-mist-dim: #9ba5ad;
+  --color-tungsten: #e8a97c;
+
+  --font-display: 'Archivo Variable', system-ui, sans-serif;
+  --font-sans: 'Archivo Variable', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, 'SF Mono', monospace;
+
+  --radius-acrylic: 16px;
+
+  /* Matte surface grain for rule 4 above. */
+  --acrylic-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-radius: var(--radius-acrylic);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-ink);
+    color: var(--color-mist);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* Rule 1, environment half: the dark field the tinted panels sit over.
+     Fixed, so the blurred acrylic always has colour movement to pick up. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background:
+      radial-gradient(48% 40% at 8% 2%, #24485e 0%, transparent 60%),
+      radial-gradient(42% 36% at 90% 14%, #27394b 0%, transparent 62%),
+      radial-gradient(50% 42% at 72% 84%, #33291f 0%, transparent 66%),
+      radial-gradient(40% 32% at 2% 72%, #1a2b36 0%, transparent 62%),
+      var(--color-ink);
+  }
+
+  /* One warm pool in the field. This is the tungsten lamp the acrylic
+     refracts, and the only warm light anywhere behind the panels. */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(38% 30% at 84% 6%, rgb(232 169 124 / 0.11) 0%, transparent 62%);
+  }
+
+  ::selection {
+    background-color: var(--color-tungsten);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-tungsten);
+    outline-offset: 3px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  .shell {
+    max-width: 1400px;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 768px) {
+    .shell {
+      padding-inline: 2.5rem;
+    }
+  }
+
+  /* ---------------------------------------------------------------------
+     THE ACRYLIC PANEL. Rules 1, 2 and 4 live here, rule 3 is ::after.
+     --------------------------------------------------------------------- */
+  .acrylic {
+    position: relative;
+    /* RULE 1: tinted hue graded fill, not white alpha */
+    background: linear-gradient(
+      152deg,
+      rgb(96 138 178 / 0.46) 0%,
+      rgb(48 72 98 / 0.5) 44%,
+      rgb(20 31 44 / 0.56) 100%
+    );
+    /* RULE 2: heavy scatter */
+    backdrop-filter: blur(38px) saturate(165%);
+    -webkit-backdrop-filter: blur(38px) saturate(165%);
+    box-shadow:
+      inset 0 1px 0 rgb(226 240 252 / 0.14),
+      0 26px 54px -30px rgb(5 9 13 / 0.88),
+      0 2px 10px -6px rgb(5 9 13 / 0.55);
+  }
+
+  /* RULE 4: broad matte wash plus fine grain. No specular, no hotspot. */
+  .acrylic::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(76% 56% at 10% 0%, rgb(220 236 250 / 0.13) 0%, transparent 64%),
+      var(--acrylic-grain);
+    background-size:
+      auto,
+      140px 140px;
+    opacity: 0.38;
+  }
+
+  /* RULE 3: light refracting across the cast edge. Hue splits from warm
+     white on the leading corner to cool blue on the trailing edge. */
+  .acrylic::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    pointer-events: none;
+    background: linear-gradient(
+      150deg,
+      rgb(255 242 228 / 0.95) 0%,
+      rgb(184 218 246 / 0.5) 24%,
+      rgb(120 176 214 / 0.06) 52%,
+      rgb(96 150 190 / 0.3) 78%,
+      rgb(240 176 128 / 0.62) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  /* Thin cast panels for the header and footer. Lighter tint, blur still
+     above 26px so the material never stops reading. */
+  .acrylic-thin {
+    position: relative;
+    background: linear-gradient(
+      152deg,
+      rgb(84 122 158 / 0.34) 0%,
+      rgb(32 48 64 / 0.42) 52%,
+      rgb(14 22 30 / 0.48) 100%
+    );
+    backdrop-filter: blur(26px) saturate(150%);
+    -webkit-backdrop-filter: blur(26px) saturate(150%);
+  }
+
+  .acrylic-thin::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      150deg,
+      rgb(255 246 236 / 0.5) 0%,
+      rgb(150 190 220 / 0.12) 40%,
+      rgb(232 169 124 / 0.24) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  /* Heavy cast slab for the quote band and the form. */
+  .acrylic-deep {
+    position: relative;
+    background: linear-gradient(
+      148deg,
+      rgb(104 148 190 / 0.52) 0%,
+      rgb(52 78 106 / 0.58) 44%,
+      rgb(19 28 38 / 0.66) 100%
+    );
+    backdrop-filter: blur(52px) saturate(180%);
+    -webkit-backdrop-filter: blur(52px) saturate(180%);
+  }
+
+  .acrylic-deep::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(66% 52% at 88% 0%, rgb(232 169 124 / 0.1) 0%, transparent 66%),
+      radial-gradient(70% 50% at 6% 0%, rgb(220 236 250 / 0.12) 0%, transparent 66%),
+      var(--acrylic-grain);
+    background-size:
+      auto,
+      auto,
+      140px 140px;
+    opacity: 0.38;
+  }
+
+  .acrylic-deep::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 2px;
+    pointer-events: none;
+    background: linear-gradient(
+      150deg,
+      rgb(255 246 236 / 0.92) 0%,
+      rgb(196 226 248 / 0.42) 22%,
+      rgb(120 176 214 / 0.08) 50%,
+      rgb(104 158 198 / 0.36) 76%,
+      rgb(232 169 124 / 0.58) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  /* Colour temperature ramp, 2700K to 4000K. Real studio content, and it is
+     the only place on the page a second warm hue appears. */
+  .kelvin-ramp {
+    height: 0.5rem;
+    background: linear-gradient(
+      90deg,
+      rgb(232 169 124 / 0.95) 0%,
+      rgb(238 196 156 / 0.9) 34%,
+      rgb(224 224 219 / 0.86) 68%,
+      rgb(203 218 232 / 0.92) 100%
+    );
+  }
+
+  /* Small uppercase tracked mono line. Budget: ceil(sections / 3) = 2. */
+  .micro {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    line-height: 1.2;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-mist-dim);
+  }
+
+  /* Catalogue descriptor inside a card. Lower case, low tracking, so it never
+     reads as an eyebrow. */
+  .catalogue {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.45;
+    letter-spacing: 0.03em;
+    color: var(--color-mist-dim);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    white-space: nowrap;
+    padding: 0.8rem 1.4rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    transition:
+      transform 380ms cubic-bezier(0.32, 0.72, 0, 1),
+      background-color 380ms cubic-bezier(0.32, 0.72, 0, 1),
+      box-shadow 380ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .btn:active {
+    transform: translateY(1px) scale(0.985);
+  }
+
+  .btn-primary {
+    background: var(--color-tungsten);
+    color: var(--color-ink);
+    border: 1px solid rgb(255 226 200 / 0.55);
+    box-shadow: 0 10px 26px -14px rgb(232 169 124 / 0.55);
+  }
+
+  .btn-primary:hover {
+    background: #f0b891;
+  }
+
+  .btn-ghost {
+    color: var(--color-mist);
+    border: 1px solid rgb(178 208 234 / 0.28);
+    background: rgb(96 136 172 / 0.12);
+  }
+
+  .btn-ghost:hover {
+    background: rgb(120 164 200 / 0.2);
+  }
+
+  /* Disc inside the button, flush with its right padding. */
+  .btn-icon {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    margin-right: -0.6rem;
+    border-radius: 999px;
+    background: rgb(11 14 17 / 0.14);
+    transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .btn:hover .btn-icon {
+    transform: translate(2px, -1px);
+  }
+
+  .btn-ghost .btn-icon {
+    background: rgb(178 208 234 / 0.16);
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity 620ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .link-underline {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+    text-decoration-color: rgb(178 208 234 / 0.36);
+    transition: text-decoration-color 300ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .link-underline:hover {
+    text-decoration-color: var(--color-tungsten);
+  }
+
+  /* Inputs are cast acrylic too, so they sit inside the panel rather than on
+     top of it. */
+  .field {
+    width: 100%;
+    padding: 0.75rem 0.95rem;
+    color: var(--color-mist);
+    background: rgb(96 136 172 / 0.1);
+    border: 1px solid rgb(178 208 234 / 0.22);
+    font-size: 0.9375rem;
+    transition:
+      border-color 300ms cubic-bezier(0.32, 0.72, 0, 1),
+      background-color 300ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .field::placeholder {
+    color: var(--color-mist-dim);
+    opacity: 0.75;
+  }
+
+  .field:focus {
+    outline: none;
+    border-color: var(--color-tungsten);
+    background: rgb(120 164 200 / 0.16);
+  }
+
+  .field[aria-invalid='true'] {
+    border-color: var(--color-tungsten);
+    background: rgb(232 169 124 / 0.1);
+  }
+
+  .field option {
+    background-color: #141a20;
+    color: var(--color-mist);
+  }
+}
+
+/* Solid-fill fallback where the user has asked for less transparency. The
+   tint is kept so the material still reads, only the scatter is dropped. */
+@media (prefers-reduced-transparency: reduce) {
+  .acrylic {
+    background: #16202a;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .acrylic-thin {
+    background: #131a21;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .acrylic-deep {
+    background: #1a2632;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
